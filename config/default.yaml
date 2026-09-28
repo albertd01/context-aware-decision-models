@@ -11,10 +11,24 @@ retrieval:
   type: tfidf
   k: 3
 
-model:
-  backend: simple_jev
-  url: http://localhost:8000/v1
-  name: null
+# Named model presets; select one with `run --model <name>`.
+models:
+  rules:
+    backend: rules
+  qwen-4b:
+    backend: simple_jev
+    url: https://simple-jev-demo-api.featherless.ai/v1
+    model: featherless-ai/Qwen3.5-4B-classifier
+    min_interval_s: 0.6          # demo API allows 2 requests/s
+  qwen-27b:                      # large-model reference
+    backend: simple_jev
+    url: https://simple-jev-demo-api.featherless.ai/v1
+    model: featherless-ai/Qwen3.8-27B-classifier
+    min_interval_s: 0.6
+  local:
+    backend: simple_jev
+    url: http://127.0.0.1:8000/v1
+    model: Qwen/Qwen3.5-2B       # must match the model the local server was started with
 
 evaluation:
   results_dir: results

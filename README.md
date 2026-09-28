@@ -22,6 +22,28 @@ The main metrics are decision accuracy, macro F1, per-class precision and recall
 
 The project is intentionally **not** an agent framework. It is an experimental framework for understanding where domain knowledge should live in a small-model decision architecture.
 
+## Quickstart
+
+```bash
+uv sync
+export PYTHONPATH=src   # see note below
+
+python -m context_decisions.cli generate-data                        # 200 seeded cases
+python -m context_decisions.cli run --experiment all --model rules   # rule baseline
+python -m context_decisions.cli run --experiment all --model qwen-4b # simple-jev demo API
+python -m context_decisions.cli compare                              # results/comparison.md
+uv run pytest
+```
+
+Experiments: `no-context`, `full-context`, `oracle` (only the relevant facts), `retrieval`
+(TF-IDF top-k on the request), `retrieval-expanded` (TF-IDF with domain symptom vocabulary
+added to the query). Model presets live in `config/default.yaml`: `rules`, `qwen-4b` and
+`qwen-27b` (public simple-jev demo API, 2 requests/s), and `local` (a local `simple-jev` server).
+
+Note: on macOS, folders synced from `~/Desktop` can get the `hidden` flag applied to `.venv`
+contents; Python 3.12+ then skips the editable-install `.pth` file and the package fails to
+import. `PYTHONPATH=src` side-steps this; pytest already sets it via `pyproject.toml`.
+
 ## Initial Decision Domain
 
 The first test domain is synthetic DevOps incident triage.

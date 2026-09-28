@@ -162,6 +162,14 @@ DISTRACTORS = {
     "status_page": "the status page vendor renewed its contract",
 }
 
+# Domain vocabulary appended to the retrieval query: what abnormal findings look like.
+# It names symptoms, never decisions, so it does not tell the retriever the answer.
+RETRIEVAL_QUERY_HINTS = (
+    "new deployment flagged bad canary; error rate above baseline SLO breached; "
+    "exceptions errors in application logs; database query latency high slow queries; "
+    "CPU saturated; memory exhausted OOM-killed; packet loss high; customers affected"
+)
+
 # Requests are sampled independently of the decision, so the request alone carries no label.
 REQUESTS = [
     "The API is slow.",

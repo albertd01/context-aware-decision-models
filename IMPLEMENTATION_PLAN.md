@@ -733,3 +733,11 @@ Decisions taken while implementing phases 0–6, where the plan above left room:
    any retriever, separating retrieval quality from how the model uses context.
 7. **Backend.** First model backend is simple-jev's logit-based choice API (full probability
    distribution → Brier/ECE without parsing).
+8. **Query-expanded retrieval.** Vague symptom requests share almost no words with the facts
+   that explain them: plain TF-IDF at k=3 retrieves only 20% of relevant facts. The
+   `retrieval-expanded` condition appends fixed domain symptom vocabulary to the query
+   (`domain.RETRIEVAL_QUERY_HINTS`, symptoms only, never decision names): 64% at k=3. Plain
+   TF-IDF stays as the weak-retriever baseline.
+9. **Model presets.** `config/default.yaml` names models (`rules`, `qwen-4b`, `qwen-27b`,
+   `local`); `qwen-27b` on the same simple-jev API serves as the large-model reference.
+   Latency is wall-clock per request, so remote runs include network time.

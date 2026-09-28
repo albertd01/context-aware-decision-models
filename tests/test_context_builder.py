@@ -43,3 +43,14 @@ def test_prompt_format(cases):
     text = build_context(cases[0], []).context_text
     for header in ("TASK:", "REQUEST:", "KNOWN FACTS:", "OPTIONS:", "Return exactly one decision."):
         assert header in text
+
+
+def test_query_expansion_improves_relevant_recall(cases):
+    def recall(strategy):
+        hits = [len(set(strategy.select(c)) & set(c.relevant_facts)) / len(c.relevant_facts)
+                for c in cases if c.relevant_facts]
+        return sum(hits) / len(hits)
+
+    plain, expanded = tfidf_retrieval(cases, k=3), tfidf_retrieval(cases, k=3, expand=True)
+    assert expanded.name == "retrieval_expanded_k3"
+    assert recall(expanded) > recall(plain) + 0.2
