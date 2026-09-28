@@ -22,6 +22,7 @@ def test_request_shape_retry_and_result(cases):
     seen = []
     model = SimpleJevModel("http://jev/v1", "org/small-model")
     model.client = httpx.Client(transport=fake_server(seen))
+    model._backoff = lambda attempt: 0
     result = model.decide(build_context(cases[0], list(cases[0].facts)))
 
     assert len(seen) == 2  # one 429, one success

@@ -16,7 +16,7 @@ INSTRUCTIONS = "Which next action is most appropriate?"
 
 class SimpleJevModel:
     def __init__(self, url: str, model: str, name: str | None = None, api_key: str | None = None,
-                 min_interval_s: float = 0.0, retries: int = 5):
+                 min_interval_s: float = 0.0, retries: int = 10):
         self.url = url.rstrip("/") + "/classifier"
         self.model = model
         self.name = name or model.split("/")[-1]
@@ -56,11 +56,16 @@ class SimpleJevModel:
             except httpx.TransportError:
                 if attempt == self.retries:
                     raise
-                time.sleep(2 ** attempt)
+                time.sleep(self._backoff(attempt))
                 continue
             if r.status_code in (429, 502, 503, 504) and attempt < self.retries:
-                time.sleep(float(r.headers.get("Retry-After", 2 ** attempt)))
+                time.sleep(max(float(r.headers.get("Retry-After", 0)), self._backoff(attempt)))
                 continue
             r.raise_for_status()
             return r.json()
         raise RuntimeError("unreachable")
+
+    @staticmethod
+    def _backoff(attempt: int) -> float:
+        """1, 2, 4, ... seconds, capped at 60: busy demo queues can take minutes to drain."""
+        return min(2 ** attempt, 60)
