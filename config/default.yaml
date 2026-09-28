@@ -29,10 +29,23 @@ models:
     backend: simple_jev
     url: http://127.0.0.1:8001/v1
     model: convaiinnovations/laya
+    state_format: plain          # request + facts only; the LLM prompt costs Laya ~0.2 accuracy
+    options: bare
+  laya-policy:                   # the decision rules as option descriptions
+    backend: simple_jev
+    url: http://127.0.0.1:8001/v1
+    model: convaiinnovations/laya
+    state_format: plain
+    options: policy
   local:
     backend: simple_jev
     url: http://127.0.0.1:8000/v1
     model: Qwen/Qwen3.5-2B       # must match the model the local server was started with
+
+# `model-filter` experiment: a classifier asks per fact whether it signals a problem.
+filter:
+  model: laya
+  threshold: 0.55              # tuned on the dev set (seed 43), not on the test cases
 
 evaluation:
   results_dir: results

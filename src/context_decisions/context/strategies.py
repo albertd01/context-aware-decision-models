@@ -49,3 +49,31 @@ class RetrievedContext:
 def tfidf_retrieval(cases: list[DecisionCase], k: int, expand: bool = False) -> RetrievedContext:
     corpus = [text for case in cases for text in case.fact_texts.values()]
     return RetrievedContext(TfidfRetriever(corpus), k, RETRIEVAL_QUERY_HINTS if expand else "")
+
+
+FILTER_QUESTION = {
+    "type": "noul",
+    "instructions": "Does this observation indicate that something is wrong with the production service?",
+    "criteria": {
+        "true": "It reports an abnormal or degraded production metric, errors, a bad release, "
+                "a recent change or user impact.",
+        "false": "It is normal, routine, unrelated to production, or about planning, people or "
+                 "other environments.",
+    },
+}
+
+
+class ModelFilterContext:
+    """Asks a classifier model, fact by fact, whether the fact signals a problem; keeps those
+    at or above `threshold`. A learned alternative to retrieval, still outside the decision model."""
+
+    def __init__(self, client, name: str, threshold: float):
+        self.client = client  # anything with ask(state, questions) -> response, e.g. JevClient
+        self.threshold = threshold
+        self.name = f"{name}_filter_t{threshold}"
+
+    def score(self, text: str) -> float:
+        return self.client.ask(text, {"f": FILTER_QUESTION})["answers"]["f"]["noul"]
+
+    def select(self, case: DecisionCase) -> list[str]:
+        return [k for k, text in case.fact_texts.items() if self.score(text) >= self.threshold]

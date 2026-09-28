@@ -12,17 +12,17 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from context_decisions.context.strategies import (FullContext, NoContext, OracleContext,
-                                                  tfidf_retrieval)
+from context_decisions.context.strategies import (FullContext, ModelFilterContext, NoContext,
+                                                  OracleContext, tfidf_retrieval)
 from context_decisions.dataset import load_cases, load_config, save_jsonl
 from context_decisions.evaluation.metrics import summarize
 from context_decisions.evaluation.runner import run
 from context_decisions.generator import generate, request_leakage
 from context_decisions.models.rule_baseline import RuleDecisionModel
-from context_decisions.models.simple_jev import SimpleJevModel
+from context_decisions.models.simple_jev import JevClient, SimpleJevModel
 from context_decisions.schemas import RunRecord
 
-EXPERIMENTS = ["no-context", "full-context", "oracle", "retrieval", "retrieval-expanded"]
+EXPERIMENTS = ["no-context", "full-context", "oracle", "retrieval", "retrieval-expanded", "model-filter"]
 
 
 def make_strategy(name: str, cases, cfg: dict):
@@ -38,6 +38,12 @@ def make_strategy(name: str, cases, cfg: dict):
             return tfidf_retrieval(cases, k)
         case "retrieval-expanded":
             return tfidf_retrieval(cases, k, expand=True)
+        case "model-filter":
+            f = cfg["filter"]
+            preset = cfg["models"][f["model"]]
+            client = JevClient(preset["url"], preset["model"],
+                               min_interval_s=preset.get("min_interval_s", 0.0))
+            return ModelFilterContext(client, f["model"], f["threshold"])
     raise SystemExit(f"unknown experiment {name!r}; choose from {EXPERIMENTS}")
 
 
@@ -49,26 +55,29 @@ def make_model(name: str, cfg: dict):
         return RuleDecisionModel()
     if preset["backend"] == "simple_jev":
         return SimpleJevModel(preset["url"], preset["model"], name=name,
-                              min_interval_s=preset.get("min_interval_s", 0.0))
+                              min_interval_s=preset.get("min_interval_s", 0.0),
+                              state_format=preset.get("state_format", "prompt"),
+                              options=preset.get("options", "bare"))
     raise SystemExit(f"unknown backend {preset['backend']!r}")
 
 
 def cmd_generate(cfg: dict, args) -> None:
-    cases = generate(cfg["dataset"], cfg["seed"])
-    save_jsonl(cases, cfg["dataset"]["path"])
-    print(f"wrote {len(cases)} cases to {cfg['dataset']['path']}")
+    path = args.out or cfg["dataset"]["path"]
+    cases = generate(cfg["dataset"], cfg["seed"] if args.seed is None else args.seed)
+    save_jsonl(cases, path)
+    print(f"wrote {len(cases)} cases to {path}")
     print("classes:", dict(sorted(Counter(c.correct_decision for c in cases).items())))
     print(f"request-only leakage accuracy: {request_leakage(cases):.2f} (chance 0.14)")
 
 
 def cmd_run(cfg: dict, args) -> None:
-    cases = load_cases(cfg["dataset"]["path"])
+    cases = load_cases(args.cases or cfg["dataset"]["path"])
     if args.limit:
         cases = cases[:args.limit]
     model = make_model(args.model, cfg)
     for name in EXPERIMENTS if args.experiment == "all" else [args.experiment]:
         records = run(cases, make_strategy(name, cases, cfg), model,
-                      results_dir=cfg["evaluation"]["results_dir"],
+                      results_dir=args.results_dir or cfg["evaluation"]["results_dir"],
                       save_raw_outputs=cfg["evaluation"]["save_raw_outputs"])
         s = summarize(records)
         print(f"{name:20} {model.name:10} acc={s['accuracy']:.2f} macroF1={s['macro_f1']:.2f} "
@@ -93,8 +102,10 @@ def comparison_table(results_dir: Path) -> str:
 
 
 def experiment_order(name: str) -> int:
-    order = ["no_context", "retrieval_k", "retrieval_expanded_k", "oracle_context", "full_context"]
-    return next((i for i, prefix in enumerate(order) if name.startswith(prefix)), len(order))
+    if "_filter_" in name:
+        return 3
+    order = ["no_context", "retrieval_k", "retrieval_expanded_k", "", "oracle_context", "full_context"]
+    return next((i for i, prefix in enumerate(order) if prefix and name.startswith(prefix)), len(order))
 
 
 def cmd_compare(cfg: dict, args) -> None:
@@ -108,11 +119,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="context_decisions")
     parser.add_argument("--config", default="config/default.yaml")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("generate-data").set_defaults(fn=cmd_generate)
+    g = sub.add_parser("generate-data")
+    g.add_argument("--seed", type=int, help="override the config seed (e.g. for a dev set)")
+    g.add_argument("--out", help="output path instead of dataset.path")
+    g.set_defaults(fn=cmd_generate)
     p = sub.add_parser("run")
     p.add_argument("--experiment", required=True, choices=[*EXPERIMENTS, "all"])
     p.add_argument("--model", default="rules")
     p.add_argument("--limit", type=int, help="only the first N cases (smoke tests)")
+    p.add_argument("--cases", help="dataset path instead of dataset.path (e.g. a dev set)")
+    p.add_argument("--results-dir", help="results directory instead of evaluation.results_dir")
     p.set_defaults(fn=cmd_run)
     sub.add_parser("compare").set_defaults(fn=cmd_compare)
     args = parser.parse_args()

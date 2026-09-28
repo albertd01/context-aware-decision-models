@@ -741,3 +741,15 @@ Decisions taken while implementing phases 0–6, where the plan above left room:
 9. **Model presets.** `config/default.yaml` names models (`rules`, `qwen-4b`, `qwen-27b`,
    `local`); `qwen-27b` on the same simple-jev API serves as the large-model reference.
    Latency is wall-clock per request, so remote runs include network time.
+10. **Laya input format.** Laya (ModernBERT encoder + decision head) scores options at mask
+    tokens: `[CLS] question [SEP] [MASK] opt… [SEP] state [SEP]`. Sending it the LLM prompt
+    (task text + option list as state) cost ~0.2 accuracy on oracle context (0.37 vs 0.55).
+    Presets therefore set `state_format: plain` (request + facts only). Option order had no
+    effect (0.37 vs 0.36 reversed). `options: policy` puts the rules into the option
+    descriptions (`domain.POLICY_DESCRIPTIONS`), the encoder-native form of rules-in-context.
+11. **Confidence = top probability.** Laya's own `confidence` is 1 − normalized entropy; all
+    backends now report the winning option's probability so ECE is comparable.
+12. **Model filter.** `model-filter` asks a classifier per fact whether it signals a problem
+    (Laya yes/no question) and keeps facts at or above `filter.threshold`. The threshold
+    (0.55) was tuned on a separate dev set (`generate-data --seed 43`). Filter time is
+    recorded separately as `context_ms` (~1.5 s/case for Laya: one request per fact).

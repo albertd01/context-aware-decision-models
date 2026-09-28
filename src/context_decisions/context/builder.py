@@ -19,4 +19,5 @@ def build_context(case: DecisionCase, selected: list[str]) -> DecisionContext:
         context_text=text,
         available_decisions=list(DECISIONS),
         facts={k: case.facts[k] for k in selected},
+        fact_texts=[case.fact_texts[k] for k in selected],
     )

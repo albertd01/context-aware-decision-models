@@ -162,6 +162,29 @@ DISTRACTORS = {
     "status_page": "the status page vendor renewed its contract",
 }
 
+# Option descriptions for choice-style backends. ACTION_DESCRIPTIONS say what an action does
+# and carry no decision knowledge; POLICY_DESCRIPTIONS state when to choose it, i.e. the rules
+# above in words (without their precedence order).
+ACTION_DESCRIPTIONS = {
+    "inspect_application": "Investigate the application code, logs and the latest release.",
+    "inspect_database": "Investigate the database and its queries.",
+    "inspect_network": "Investigate network connectivity between services.",
+    "inspect_infrastructure": "Investigate the app servers' CPU, memory and capacity.",
+    "rollback_deployment": "Revert the latest release.",
+    ASK: "Ask for more diagnostic information before acting.",
+    "escalate": "Escalate to the incident commander.",
+}
+POLICY_DESCRIPTIONS = {
+    "inspect_application": "A recent deployment and new errors in the application logs.",
+    "inspect_database": "Database latency is high while app-server CPU is normal.",
+    "inspect_network": "Packet loss between services is high.",
+    "inspect_infrastructure": "App-server CPU or memory is saturated.",
+    "rollback_deployment": "A recent release is flagged bad and the error-rate regression is severe.",
+    ASK: "None of the other conditions is established by the known facts.",
+    "escalate": "Many customers are affected and two or more subsystems (database, network, "
+                "app servers) are degraded at once.",
+}
+
 # Domain vocabulary appended to the retrieval query: what abnormal findings look like.
 # It names symptoms, never decisions, so it does not tell the retriever the answer.
 RETRIEVAL_QUERY_HINTS = (

@@ -35,6 +35,7 @@ class DecisionContext(BaseModel):
     context_text: str
     available_decisions: list[str]
     facts: dict[str, FactValue] = {}  # structured view of the selected facts (rule baseline)
+    fact_texts: list[str] = []        # the selected facts as sentences (backends with own format)
 
 
 class DecisionResult(BaseModel):
@@ -55,6 +56,7 @@ class RunRecord(BaseModel):
     confidence: float | None = None
     scores: dict[str, float] | None = None
     latency_ms: float
+    context_ms: float = 0.0          # time the context strategy took (e.g. a filtering model)
     selected_facts: list[str]
     relevant_facts: list[str]
     raw_output: object | None = None

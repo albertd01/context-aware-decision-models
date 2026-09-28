@@ -14,7 +14,9 @@ def run(cases: list[DecisionCase], strategy, model: DecisionModel,
         results_dir: str | Path | None = None, save_raw_outputs: bool = True) -> list[RunRecord]:
     records = []
     for case in cases:
+        start = time.perf_counter()
         selected = strategy.select(case)
+        context_ms = (time.perf_counter() - start) * 1000
         context = build_context(case, selected)  # ground truth never enters the context
         start = time.perf_counter()
         result = model.decide(context)
@@ -28,6 +30,7 @@ def run(cases: list[DecisionCase], strategy, model: DecisionModel,
             confidence=result.confidence,
             scores=result.scores,
             latency_ms=result.latency_ms if result.latency_ms is not None else elapsed_ms,
+            context_ms=context_ms,
             selected_facts=selected,
             relevant_facts=case.relevant_facts,
             raw_output=result.raw_output if save_raw_outputs else None,
