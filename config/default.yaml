@@ -1,0 +1,21 @@
+seed: 42
+
+dataset:
+  num_cases: 200
+  path: data/generated/cases.jsonl
+  distractors_per_case: 10     # irrelevant facts mixed into every case
+  hide_background_prob: 0.3    # chance a non-decisive diagnostic fact is left unknown
+  hard_case_prob: 0.3          # chance a case also carries a tempting non-decisive signal
+
+retrieval:
+  type: tfidf
+  k: 3
+
+model:
+  backend: simple_jev
+  url: http://localhost:8000/v1
+  name: null
+
+evaluation:
+  results_dir: results
+  save_raw_outputs: true
